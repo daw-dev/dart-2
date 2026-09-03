@@ -24,9 +24,11 @@ jest.mock('../src/lib/mongodb', () => {
 });
 
 import { POST as postDartwork } from '../src/app/api/dartworks+api';
-import { POST as postReport, DELETE as deleteReport } from '../src/app/api/reports+api';
-import { POST as postComment, DELETE as deleteComment } from '../src/app/api/comments+api';
-import { POST as postLike } from '../src/app/api/dartworks/like+api';
+import { POST as postReport } from '../src/app/api/reports+api';
+import { DELETE as deleteReport } from '../src/app/api/reports/[targetId]+api';
+import { POST as postComment } from '../src/app/api/comments+api';
+import { DELETE as deleteComment } from '../src/app/api/comments/[id]+api';
+import { POST as postLike } from '../src/app/api/dartworks/[id]/like+api';
 import { createAuthToken } from '../src/lib/auth-tokens';
 
 describe('Real REST Web APIs Controllers & Bearer Token Authentication', () => {

@@ -6,7 +6,15 @@ export async function POST(request: Request, { params }: { params?: { id?: strin
   try {
     const url = new URL(request.url);
     const segments = url.pathname.split('/').filter(Boolean);
-    const id = params?.id || segments[segments.length - 2] || '';
+    const body = await request.json().catch(() => ({}));
+    
+    let id = params?.id;
+    if (!id && segments.length >= 3 && segments[segments.length - 1] === 'visit' && segments[segments.length - 2] !== 'dartworks') {
+      id = segments[segments.length - 2];
+    }
+    if (!id) {
+      id = body?.artworkId || '';
+    }
 
     if (!id) {
       return Response.json({ error: 'artworkId is required in URL' }, { status: 400 });

@@ -7,7 +7,15 @@ export async function GET(request: Request, { params }: { params?: { id?: string
   try {
     const url = new URL(request.url);
     const segments = url.pathname.split('/').filter(Boolean);
-    const id = params?.id || segments[segments.length - 2] || '';
+    const queryId = url.searchParams.get('artworkId') || url.searchParams.get('id');
+    
+    let id = params?.id;
+    if (!id && segments.length >= 3 && segments[segments.length - 1] === 'comments' && segments[segments.length - 2] !== 'dartworks') {
+      id = segments[segments.length - 2];
+    }
+    if (!id) {
+      id = queryId || '';
+    }
 
     let artObjectId: ObjectId;
     try {
@@ -45,9 +53,16 @@ export async function POST(request: Request, { params }: { params?: { id?: strin
   try {
     const url = new URL(request.url);
     const segments = url.pathname.split('/').filter(Boolean);
-    const id = params?.id || segments[segments.length - 2] || '';
+    const body = await request.json().catch(() => ({}));
+    
+    let id = params?.id;
+    if (!id && segments.length >= 3 && segments[segments.length - 1] === 'comments' && segments[segments.length - 2] !== 'dartworks') {
+      id = segments[segments.length - 2];
+    }
+    if (!id) {
+      id = body?.artworkId || '';
+    }
 
-    const body = await request.json();
     const commentData = body?.comment || body;
     const text = commentData?.text || '';
     const parentId = commentData?.parentId;

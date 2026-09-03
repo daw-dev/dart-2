@@ -12,12 +12,20 @@ export async function POST(request: Request, { params }: { params?: { id?: strin
   try {
     const url = new URL(request.url);
     const segments = url.pathname.split('/').filter(Boolean);
-    // Path looks like /api/dartworks/<id>/like
-    const id = params?.id || segments[segments.length - 2] || '';
+    const body = await request.json().catch(() => ({}));
+    
+    let id = params?.id;
+    if (!id && segments.length >= 3 && segments[segments.length - 1] === 'like' && segments[segments.length - 2] !== 'dartworks') {
+      id = segments[segments.length - 2];
+    }
+    if (!id) {
+      id = body?.artworkId || '';
+    }
+
     const username = auth.user.username;
 
     if (!id) {
-      return Response.json({ error: 'artworkId is required in URL' }, { status: 400 });
+      return Response.json({ error: 'artworkId is required' }, { status: 400 });
     }
 
     let artObjectId: ObjectId;
