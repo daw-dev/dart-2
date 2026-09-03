@@ -1,0 +1,958 @@
+openapi: 3.0.3
+info:
+  title: D'Art REST Web APIs
+  description: |
+    Documentazione formale delle API RESTful per la piattaforma geospaziale di Street Art Aumentata & Decoro Urbano (Comune di Trento).
+    Corso di Ingegneria del Software - Università degli Studi di Trento (A.A. 2025/2026).
+  version: 1.0.0
+  contact:
+    name: Davide Dal Bosco
+    email: davide.dalbosco@studenti.unitn.it
+servers:
+  - url: https://dart-2.vercel.app
+    description: Production Server (Vercel Serverless)
+  - url: http://localhost:8081
+    description: Local Development Server (Expo Router Server Routes)
+
+paths:
+  /api/authentications:
+    post:
+      tags:
+        - Autenticazione & Sessione
+      summary: Login utente e rilascio Token JWT
+      description: Verifica le credenziali utente (username/email e password) contro MongoDB e rilascia un Bearer Token JWT firmato valido per 24 ore (RFC 7519 / HMAC-SHA256).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+              properties:
+                username:
+                  type: string
+                  example: davide_db
+                email:
+                  type: string
+                  example: davide@unitn.it
+                password:
+                  type: string
+                  example: password123
+      responses:
+        '200':
+          description: Autenticazione riuscita. Restituisce il token JWT e i dati del profilo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Enjoy your token!
+                  token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  user:
+                    $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: Username o email mancanti nella richiesta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Autenticazione fallita. Credenziali errate o utente non trovato.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/dartworks:
+    get:
+      tags:
+        - D'ArtWorks & Mappa
+      summary: Recupera tutti i D'ArtWork attivi
+      description: Restituisce l'elenco completo delle opere geolocalizzate a Trento con asset spaziali 3D e commenti nidificati.
+      responses:
+        '200':
+          description: Collezione di D'ArtWork attivi.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DArtWork'
+    post:
+      tags:
+        - D'ArtWorks & Mappa
+      summary: Pubblica un nuovo D'ArtWork
+      description: Crea un'opera d'arte virtuale geolocalizzata e il relativo asset 3D. Richiede Bearer Token. L'autore viene associato automaticamente dall'identità del token.
+      security:
+        - BearerAuth: []
+        - XAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - dArtWork
+              properties:
+                dArtWork:
+                  $ref: '#/components/schemas/DArtWorkInput'
+      responses:
+        '201':
+          description: D'ArtWork pubblicato con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  insertedId:
+                    type: string
+                    example: 66d5db90fae14b29b71a0001
+                  assetId:
+                    type: string
+                    example: 66d5db90fae14b29b71a0002
+        '400':
+          description: Parametri obbligatori mancanti (titolo o coordinate geografiche).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Token di autenticazione mancante o non valido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - D'ArtWorks & Mappa
+      summary: Rimuovi un D'ArtWork
+      description: Elimina un'opera dal sistema rimuovendo a cascata asset spaziali, commenti e segnalazioni collegate. Richiede Bearer Token.
+      security:
+        - BearerAuth: []
+        - XAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - artworkId
+              properties:
+                artworkId:
+                  type: string
+                  example: 66d5db90fae14b29b71a0001
+      responses:
+        '200':
+          description: Opera eliminata con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: ID opera non valido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Non autorizzato.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/dartworks/like:
+    post:
+      tags:
+        - D'ArtWorks & Mappa
+      summary: Aggiungi o rimuovi like a un'opera
+      description: Esegue il toggle atomico del like per l'utente autenticato.
+      security:
+        - BearerAuth: []
+        - XAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - artworkId
+              properties:
+                artworkId:
+                  type: string
+                  example: 66d5db90fae14b29b71a0001
+      responses:
+        '200':
+          description: Like aggiornato con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  isLiked:
+                    type: boolean
+        '401':
+          description: Autenticazione richiesta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/dartworks/visit:
+    post:
+      tags:
+        - D'ArtWorks & Mappa
+      summary: Registra visualizzazione in Realtà Aumentata
+      description: Incrementa il contatore di visite all'avvicinamento entro il raggio di prossimità di 30 metri (RF3).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - artworkId
+              properties:
+                artworkId:
+                  type: string
+                  example: 66d5db90fae14b29b71a0001
+      responses:
+        '200':
+          description: Contatore visualizzazioni aggiornato.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+
+  /api/users:
+    get:
+      tags:
+        - Utenti & Profili
+      summary: Elenco profili utenti e artisti
+      description: Recupera i profili pubblici registrati nel sistema.
+      responses:
+        '200':
+          description: Catalogo utenti.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserProfile'
+    post:
+      tags:
+        - Utenti & Profili
+      summary: Registrazione nuovo profilo utente
+      description: Registra un nuovo utente inizializzando preferenze avatar e collezione.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+              properties:
+                username:
+                  type: string
+                  example: nuovo_artista
+                email:
+                  type: string
+                  example: artista@unitn.it
+                password:
+                  type: string
+                  example: password123
+                newUser:
+                  $ref: '#/components/schemas/UserProfile'
+      responses:
+        '201':
+          description: Profilo utente registrato con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          description: Username o email già registrati.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/bio:
+    patch:
+      tags:
+        - Utenti & Profili
+      summary: Aggiorna biografia utente
+      description: Modifica la bio dell'utente autenticato (massimo 350 caratteri). Richiede Bearer Token.
+      security:
+        - BearerAuth: []
+        - XAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bio
+              properties:
+                bio:
+                  type: string
+                  maxLength: 350
+                  example: Artista 3D e creatore di monumenti digitali a Trento.
+      responses:
+        '200':
+          description: Biografia aggiornata con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '401':
+          description: Autenticazione richiesta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/avatar:
+    patch:
+      tags:
+        - Utenti & Profili
+      summary: Modifica avatar emoji e colore
+      description: Aggiorna l'emoji e il codice colore esadecimale dell'avatar dell'utente autenticato.
+      security:
+        - BearerAuth: []
+        - XAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                emoji:
+                  type: string
+                  example: 🦊
+                color:
+                  type: string
+                  example: '#6366F1'
+      responses:
+        '200':
+          description: Avatar aggiornato.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '401':
+          description: Autenticazione richiesta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/collection:
+    post:
+      tags:
+        - Utenti & Profili
+      summary: Aggiorna collezione personale curata
+      description: Imposta le opere preferite mostrate sul profilo utente, applicando il vincolo di massimo 3 opere in evidenza (RF10). Richiede Bearer Token.
+      security:
+        - BearerAuth: []
+        - XAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                artworkId:
+                  type: string
+                collection:
+                  type: array
+                  items:
+                    type: string
+                  description: Array di ID opere (max 3 elementi)
+      responses:
+        '200':
+          description: Collezione personale aggiornata con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  collection:
+                    type: array
+                    items:
+                      type: string
+        '401':
+          description: Autenticazione richiesta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/follow:
+    post:
+      tags:
+        - Utenti & Profili
+      summary: Segui / Smetti di seguire un artista
+      description: Esegue il toggle del following per l'utente verso un artista target.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - myUsername
+                - targetUsername
+              properties:
+                myUsername:
+                  type: string
+                  example: davide_db
+                targetUsername:
+                  type: string
+                  example: SaraPixel
+      responses:
+        '200':
+          description: Relazione following aggiornata.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /api/users/hashtags:
+    patch:
+      tags:
+        - Utenti & Profili
+      summary: Aggiorna hashtag seguiti
+      description: Modifica gli hashtag di interesse artistico per la personalizzazione del feed Esplora.
+      security:
+        - BearerAuth: []
+        - XAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - hashtags
+              properties:
+                hashtags:
+                  type: array
+                  items:
+                    type: string
+                  example: [3DArt, Trento, Sculpture]
+      responses:
+        '200':
+          description: Hashtag aggiornati con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '401':
+          description: Autenticazione richiesta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/comments:
+    get:
+      tags:
+        - Commenti & Feedback
+      summary: Leggi commenti di un'opera
+      parameters:
+        - in: query
+          name: artworkId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Elenco commenti dell'opera.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+    post:
+      tags:
+        - Commenti & Feedback
+      summary: Pubblica un commento o risposta
+      description: Inserisce un commento all'opera. Se l'autore corrisponde all'artista dell'opera, il sistema assegna il badge [Artista]. Richiede Bearer Token.
+      security:
+        - BearerAuth: []
+        - XAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - artworkId
+                - comment
+              properties:
+                artworkId:
+                  type: string
+                comment:
+                  type: object
+                  required:
+                    - text
+                  properties:
+                    text:
+                      type: string
+                      example: Bellissima installazione in Piazza Duomo!
+                    parentId:
+                      type: string
+                      description: ID del commento genitore in caso di risposta nidificata
+      responses:
+        '201':
+          description: Commento pubblicato con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  id:
+                    type: string
+        '401':
+          description: Autenticazione richiesta per commentare.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Commenti & Feedback
+      summary: Elimina un commento
+      security:
+        - BearerAuth: []
+        - XAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - commentId
+              properties:
+                commentId:
+                  type: string
+      responses:
+        '200':
+          description: Commento rimosso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '401':
+          description: Autenticazione richiesta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reports:
+    get:
+      tags:
+        - Moderazione & Decoro Urbano
+      summary: Coda segnalazioni per moderatori
+      description: Restituisce le segnalazioni attive di violazione del decoro urbano per il pannello del Comune di Trento.
+      responses:
+        '200':
+          description: Elenco segnalazioni attive.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContentReport'
+    post:
+      tags:
+        - Moderazione & Decoro Urbano
+      summary: Invia segnalazione di decoro urbano
+      description: Segnala un'opera o commento per violazione. Richiede Bearer Token.
+      security:
+        - BearerAuth: []
+        - XAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - targetId
+                - category
+              properties:
+                targetId:
+                  type: string
+                targetType:
+                  type: string
+                  enum: [artwork, comment]
+                  default: artwork
+                category:
+                  type: string
+                  enum: [offensive, copyright, spam, danger]
+                  example: offensive
+                reason:
+                  type: string
+                  example: Contenuto non consono al luogo storico.
+      responses:
+        '201':
+          description: Segnalazione inviata al Comune di Trento.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  id:
+                    type: string
+        '400':
+          description: Parametri obbligatori mancanti.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Autenticazione richiesta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Moderazione & Decoro Urbano
+      summary: Archivia o risolvi segnalazione
+      description: Archivia le segnalazioni relative a un determinato targetId (azione IGNORA per falso positivo). Richiede Bearer Token.
+      security:
+        - BearerAuth: []
+        - XAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - targetId
+              properties:
+                targetId:
+                  type: string
+      responses:
+        '200':
+          description: Segnalazione archiviata con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '401':
+          description: Non autorizzato.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Inserire il Bearer Token JWT rilasciato da /api/authentications
+    XAccessToken:
+      type: apiKey
+      in: header
+      name: x-access-token
+      description: Header legacy di compatibilità EasyLib
+
+  schemas:
+    UserProfile:
+      type: object
+      required:
+        - username
+        - email
+      properties:
+        username:
+          type: string
+          example: davide_db
+        email:
+          type: string
+          example: davide@unitn.it
+        bio:
+          type: string
+          example: Software engineer & digital artist in Trento.
+        profilePicColor:
+          type: string
+          example: '#6366F1'
+        profilePicEmoji:
+          type: string
+          example: 🦊
+        album:
+          type: array
+          items:
+            type: string
+          description: ID delle opere visitate in AR
+        collection:
+          type: array
+          items:
+            type: string
+          description: Opere preferite esposte sul profilo (max 3)
+        exposition:
+          type: array
+          items:
+            type: string
+          description: Opere create e pubblicate dall'artista
+        following:
+          type: array
+          items:
+            type: string
+        followers:
+          type: array
+          items:
+            type: string
+        badges:
+          type: array
+          items:
+            type: string
+          example: [Pioniere Digitale, Top Artist]
+        hashtags:
+          type: array
+          items:
+            type: string
+          example: [3DArt, Trento, Sculpture]
+        isModerator:
+          type: boolean
+          example: false
+
+    DArtWork:
+      type: object
+      required:
+        - id
+        - title
+        - artist
+        - latitude
+        - longitude
+      properties:
+        id:
+          type: string
+          example: 66d5db90fae14b29b71a0001
+        title:
+          type: string
+          example: Wizard Dante
+        artist:
+          type: string
+          example: DArtTeam
+        description:
+          type: string
+          example: Installazione 3D in realtà aumentata su Piazza Dante.
+        locationName:
+          type: string
+          example: Piazza Dante, Trento
+        latitude:
+          type: number
+          example: 46.0718
+        longitude:
+          type: number
+          example: 11.1202
+        hashtags:
+          type: array
+          items:
+            type: string
+          example: [3DArt, Dante, Trento]
+        likesCount:
+          type: integer
+          example: 42
+        viewsCount:
+          type: integer
+          example: 120
+        isSensitive:
+          type: boolean
+          example: false
+        creationDate:
+          type: string
+          example: '2026-09-01T10:00:00.000Z'
+        expirationDate:
+          type: string
+          example: '2026-09-22T23:59:59.000Z'
+        asset:
+          $ref: '#/components/schemas/Asset'
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+
+    DArtWorkInput:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          example: Statua Futuristica
+        description:
+          type: string
+          example: Scultura digitale poligonale.
+        locationName:
+          type: string
+          example: Piazza Duomo
+        latitude:
+          type: number
+          example: 46.0674
+        longitude:
+          type: number
+          example: 11.1215
+        durationHours:
+          type: integer
+          default: 48
+          example: 72
+        scale:
+          type: number
+          default: 1.0
+          example: 1.2
+        rotation:
+          type: number
+          default: 0
+          example: 45
+        preview:
+          type: string
+          example: https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe
+
+    Asset:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        url:
+          type: string
+        scale:
+          type: number
+          example: 1.0
+        rotation:
+          type: number
+          example: 0
+
+    Comment:
+      type: object
+      required:
+        - id
+        - username
+        - text
+      properties:
+        id:
+          type: string
+          example: c-101
+        artworkId:
+          type: string
+        username:
+          type: string
+          example: SaraPixel
+        text:
+          type: string
+          example: Bellissimo effetto visivo!
+        createdAt:
+          type: string
+          example: '2026-09-02T14:30:00.000Z'
+        parentId:
+          type: string
+        replies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+
+    ContentReport:
+      type: object
+      required:
+        - id
+        - targetId
+        - category
+      properties:
+        id:
+          type: string
+        targetId:
+          type: string
+        targetType:
+          type: string
+          enum: [artwork, comment]
+        reporterUsername:
+          type: string
+        category:
+          type: string
+          enum: [offensive, copyright, spam, danger]
+        reason:
+          type: string
+        createdAt:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: Descrizione dell'errore
