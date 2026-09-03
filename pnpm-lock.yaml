@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@expo/server':
+        specifier: ^0.7.5
+        version: 0.7.5
       '@expo/ui':
         specifier: ~56.0.18
         version: 56.0.18(@babel/core@7.29.7)(@types/react@19.2.17)(expo@56.0.12)(react-dom@19.2.3(react@19.2.3))(react-native-reanimated@4.3.1(react-native-worklets@0.8.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native-worklets@0.8.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.17)(react@19.2.3))(react@19.2.3)
@@ -741,6 +744,10 @@ packages:
 
   '@expo/sdk-runtime-versions@1.0.0':
     resolution: {integrity: sha512-Doz2bfiPndXYFPMRwPyGa1k5QaKDVpY806UJj570epIiMzWaYyCtobasyfC++qfIXVb5Ocy7r3tP9d62hAQ7IQ==}
+
+  '@expo/server@0.7.5':
+    resolution: {integrity: sha512-aNVcerBSJEcUspvXRWChEgFhix1gTNIcgFDevaU/A1+TkfbejNIjGX4rfLEpfyRzzdLIRuOkBNjD+uTYMzohyg==}
+    engines: {node: '>=20.16.0'}
 
   '@expo/spawn-async@1.8.0':
     resolution: {integrity: sha512-eb9xxd/LbuEGSdua4NumCu/McVB9EM+F/JxB9pWgnERw4HQ9XyTNH1KapG6oqLWR8TuRK2LQfzJlmNi94CVobw==}
@@ -4874,6 +4881,13 @@ snapshots:
   '@expo/schema-utils@56.0.1': {}
 
   '@expo/sdk-runtime-versions@1.0.0': {}
+
+  '@expo/server@0.7.5':
+    dependencies:
+      abort-controller: 3.0.0
+      debug: 4.4.3
+    transitivePeerDependencies:
+      - supports-color
 
   '@expo/spawn-async@1.8.0':
     dependencies:
