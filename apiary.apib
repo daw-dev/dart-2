@@ -120,6 +120,23 @@ Crea un nuovo D'ArtWork e ne associa l'ancora spaziale 3D nella collezione `asse
     + Attributes (object)
         + error: `Autenticazione richiesta. Token mancante o non valido.` (string)
 
+
+## Singolo D'ArtWork [/api/dartworks/{id}]
+
++ Parameters
+    + id: `66d5db90fae14b29b71a0001` (string, required) - ID univoco dell'opera
+
+### Recupera dati opera [GET]
+
++ Response 200 (application/json)
+
+    + Attributes (DArtWork)
+
++ Response 404 (application/json)
+
+    + Attributes (object)
+        + error: `D'ArtWork not found` (string)
+
 ### Elimina un D'ArtWork [DELETE]
 Elimina definitivamente un'opera dal sistema con **cancellazione a cascata (Cascade Delete)** di modelli 3D associati, commenti e segnalazioni.
 
@@ -129,19 +146,10 @@ Elimina definitivamente un'opera dal sistema con **cancellazione a cascata (Casc
 
             Authorization: Bearer <JWT_TOKEN>
 
-    + Attributes (object)
-        + artworkId: `66d5db90fae14b29b71a0001` (string, required) - ID dell'opera da eliminare
-
 + Response 200 (application/json)
 
     + Attributes (object)
         + success: true (boolean)
-        + message: `Artwork deleted successfully` (string)
-
-+ Response 400 (application/json)
-
-    + Attributes (object)
-        + error: `Invalid artworkId` (string)
 
 + Response 401 (application/json)
 
@@ -149,10 +157,13 @@ Elimina definitivamente un'opera dal sistema con **cancellazione a cascata (Casc
         + error: `Non autorizzato.` (string)
 
 
-## Interazione Like [/api/dartworks/like]
+## Interazione Like [/api/dartworks/{id}/like]
 
-### Toggle Like su un'opera [POST]
-Aggiunge o rimuove il like all'opera per l'utente autenticato in modo atomico.
++ Parameters
+    + id: `66d5db90fae14b29b71a0001` (string, required) - ID univoco dell'opera
+
+### Toggle Like [POST]
+Aggiunge o rimuove il like all'opera indicata nel percorso per l'utente autenticato dal token.
 
 + Request (application/json)
 
@@ -160,14 +171,11 @@ Aggiunge o rimuove il like all'opera per l'utente autenticato in modo atomico.
 
             Authorization: Bearer <JWT_TOKEN>
 
-    + Attributes (object)
-        + artworkId: `66d5db90fae14b29b71a0001` (string, required) - ID dell'opera
-
 + Response 200 (application/json)
 
     + Attributes (object)
         + success: true (boolean)
-        + isLiked: true (boolean) - `true` se il like è stato aggiunto, `false` se rimosso
+        + isLiked: true (boolean)
 
 + Response 401 (application/json)
 
@@ -175,15 +183,13 @@ Aggiunge o rimuove il like all'opera per l'utente autenticato in modo atomico.
         + error: `Autenticazione richiesta.` (string)
 
 
-## Fruizione Realtà Aumentata [/api/dartworks/visit]
+## Fruizione Realtà Aumentata [/api/dartworks/{id}/visit]
+
++ Parameters
+    + id: `66d5db90fae14b29b71a0001` (string, required) - ID univoco dell'opera
 
 ### Registra visualizzazione in AR (Prossimità 30m) [POST]
-Incrementa il contatore delle visualizzazioni dell'opera quando l'utente si avvicina entro il raggio di 30 metri da coordinate GPS (RF3) e avvia la visualizzazione 3D.
-
-+ Request (application/json)
-
-    + Attributes (object)
-        + artworkId: `66d5db90fae14b29b71a0001` (string, required)
+Incrementa il contatore delle visualizzazioni dell'opera all'avvicinamento entro il raggio di 30 metri da coordinate GPS (RF3).
 
 + Response 200 (application/json)
 
@@ -193,22 +199,21 @@ Incrementa il contatore delle visualizzazioni dell'opera quando l'utente si avvi
 
 # Group Commenti & Community
 
-Gestione dei feedback e dei commenti nidificati per le opere d'arte.
+Gestione dei feedback e dei commenti per le opere d'arte.
 
-## Commenti per Opera [/api/comments{?artworkId}]
-
-### Leggi i commenti di un'opera [GET]
-Restituisce tutti i commenti e le risposte collegate a una specifica opera.
+## Commenti per Opera [/api/dartworks/{id}/comments]
 
 + Parameters
-    + artworkId: `66d5db90fae14b29b71a0001` (string, required) - ID univoco dell'opera
+    + id: `66d5db90fae14b29b71a0001` (string, required) - ID univoco dell'opera
+
+### Leggi commenti dell'opera [GET]
 
 + Response 200 (application/json)
 
     + Attributes (array[Comment])
 
-### Pubblica un commento o risposta [POST /api/comments]
-Inserisce un nuovo commento. Se l'utente che commenta coincide con l'autore dell'opera, il backend assegna automaticamente il badge `[Artista]`.
+### Pubblica un commento o risposta [POST]
+Inserisce un nuovo commento sull'opera indicata nel percorso. Se l'utente che commenta coincide con l'autore, assegna il badge `[Artista]`.
 
 + Request (application/json)
 
@@ -217,10 +222,8 @@ Inserisce un nuovo commento. Se l'utente che commenta coincide con l'autore dell
             Authorization: Bearer <JWT_TOKEN>
 
     + Attributes (object)
-        + artworkId: `66d5db90fae14b29b71a0001` (string, required)
-        + comment (object, required)
-            + text: `Splendida resa del modello poligonale!` (string, required)
-            + parentId: `c-101` (string, optional) - ID del commento genitore in caso di risposta nidificata
+        + text: `Splendida resa del modello poligonale!` (string, required)
+        + parentId: `c-101` (string, optional) - ID commento genitore
 
 + Response 201 (application/json)
 
@@ -233,17 +236,19 @@ Inserisce un nuovo commento. Se l'utente che commenta coincide con l'autore dell
     + Attributes (object)
         + error: `Autenticazione richiesta per commentare.` (string)
 
-### Elimina un commento [DELETE /api/comments]
-Rimuove un commento e cancella le segnalazioni ad esso collegate.
+
+## Gestione Commento Singolo [/api/comments/{id}]
+
++ Parameters
+    + id: `c-102` (string, required) - ID univoco del commento
+
+### Elimina un commento per ID [DELETE]
 
 + Request (application/json)
 
     + Headers
 
             Authorization: Bearer <JWT_TOKEN>
-
-    + Attributes (object)
-        + commentId: `c-102` (string, required)
 
 + Response 200 (application/json)
 
@@ -280,16 +285,44 @@ Crea un nuovo profilo utente con preferenze predefinite.
     + Attributes (object)
         + success: true (boolean)
 
-+ Response 400 (application/json)
+
+## Profilo Utente Singolo [/api/users/{username}]
+
++ Parameters
+    + username: `davide_db` (string, required) - Username dell'utente
+
+### Recupera profilo utente [GET]
+
++ Response 200 (application/json)
+
+    + Attributes (UserProfile)
+
++ Response 404 (application/json)
 
     + Attributes (object)
-        + error: `User already exists` (string)
+        + error: `User not found` (string)
+
+### Cancellazione account GDPR [DELETE]
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Bearer <JWT_TOKEN>
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
 
 
-## Collezione Curata Personale [/api/users/collection]
+## Collezione Curata Personale [/api/users/{username}/collection]
 
-### Aggiorna la collezione in evidenza (max 3 opere) [POST]
-Aggiorna le opere preferite mostrate sul profilo dell'artista, applicando rigorosamente il vincolo di capienza massima a 3 elementi (RF10).
++ Parameters
+    + username: `davide_db` (string, required) - Username dell'utente
+
+### Aggiorna collezione in evidenza (max 3 opere) [POST]
+Aggiorna le opere preferite mostrate sul profilo dell'artista, applicando il vincolo di capienza massima a 3 elementi (RF10).
 
 + Request (application/json)
 
@@ -308,10 +341,12 @@ Aggiorna le opere preferite mostrate sul profilo dell'artista, applicando rigoro
         + collection: `66d5db90fae14b29b71a0001`, `66d5db90fae14b29b71a0002` (array[string])
 
 
-## Gestione Biografia [/api/users/bio]
+## Gestione Biografia [/api/users/{username}/bio]
+
++ Parameters
+    + username: `davide_db` (string, required) - Username dell'utente
 
 ### Modifica biografia utente [PATCH]
-Aggiorna la descrizione del profilo (massimo 350 caratteri).
 
 + Request (application/json)
 
@@ -328,10 +363,12 @@ Aggiorna la descrizione del profilo (massimo 350 caratteri).
         + success: true (boolean)
 
 
-## Personalizzazione Avatar [/api/users/avatar]
+## Personalizzazione Avatar [/api/users/{username}/avatar]
+
++ Parameters
+    + username: `davide_db` (string, required) - Username dell'utente
 
 ### Modifica emoji e colore avatar [PATCH]
-Aggiorna l'icona emoji e il colore esadecimale di sfondo dell'avatar dell'utente.
 
 + Request (application/json)
 
@@ -349,27 +386,31 @@ Aggiorna l'icona emoji e il colore esadecimale di sfondo dell'avatar dell'utente
         + success: true (boolean)
 
 
-## Follow Artisti [/api/users/follow]
+## Follow Artisti [/api/users/{username}/follow]
+
++ Parameters
+    + username: `SaraPixel` (string, required) - Username dell'artista da seguire/non seguire
 
 ### Segui o smetti di seguire un artista [POST]
-Esegue il toggle della relazione following/followers tra utenti.
 
 + Request (application/json)
 
     + Attributes (object)
         + myUsername: `davide_db` (string, required)
-        + targetUsername: `SaraPixel` (string, required)
 
 + Response 200 (application/json)
 
     + Attributes (object)
         + success: true (boolean)
+        + isFollowing: true (boolean)
 
 
-## Hashtag di Interesse [/api/users/hashtags]
+## Hashtag di Interesse [/api/users/{username}/hashtags]
+
++ Parameters
+    + username: `davide_db` (string, required) - Username dell'utente
 
 ### Aggiorna hashtag preferiti [PATCH]
-Aggiorna i tag tematici seguiti dall'utente per personalizzare il feed di scoperta.
 
 + Request (application/json)
 
@@ -400,7 +441,6 @@ Restituisce l'elenco delle segnalazioni inviate dagli utenti, ordinate dalla pi�
     + Attributes (array[ContentReport])
 
 ### Invia una segnalazione di decoro urbano [POST]
-Invia una segnalazione motivata relativa a un'opera o a un commento (categorie: `offensive`, `copyright`, `spam`, `danger`).
 
 + Request (application/json)
 
@@ -429,15 +469,11 @@ Invia una segnalazione motivata relativa a un'opera o a un commento (categorie: 
         + success: true (boolean)
         + id: `rep-1725320000000` (string)
 
-+ Response 400 (application/json)
 
-    + Attributes (object)
-        + error: `Target ID and category are required` (string)
+## Risoluzione Segnalazioni [/api/reports/{targetId}]
 
-+ Response 401 (application/json)
-
-    + Attributes (object)
-        + error: `Autenticazione richiesta per inviare segnalazioni.` (string)
++ Parameters
+    + targetId: `66d5db90fae14b29b71a0001` (string, required) - ID dell'opera o commento da archiviare
 
 ### Archivia o risolvi una segnalazione [DELETE]
 Rimuove la segnalazione dalla coda dei moderatori (azione *"IGNORA"* in caso di falso positivo). L'opera associata rimane online e visibile.
@@ -447,9 +483,6 @@ Rimuove la segnalazione dalla coda dei moderatori (azione *"IGNORA"* in caso di 
     + Headers
 
             Authorization: Bearer <JWT_TOKEN>
-
-    + Attributes (object)
-        + targetId: `66d5db90fae14b29b71a0001` (string, required) - ID del target le cui segnalazioni vanno archiviate
 
 + Response 200 (application/json)
 

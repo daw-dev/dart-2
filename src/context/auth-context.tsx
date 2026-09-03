@@ -317,7 +317,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = { ...currentUser, bio };
     setCurrentUser(updated);
     setUsers((prev) => prev.map((u) => (u.username === currentUser.username ? updated : u)));
-    apiPatch('/api/users/bio', { username: currentUser.username, bio });
+    apiPatch(`/api/users/${currentUser.username}/bio`, { bio });
   };
 
   const updateAvatar = (emoji: string, color?: string) => {
@@ -329,8 +329,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     setCurrentUser(updated);
     setUsers((prev) => prev.map((u) => (u.username === currentUser.username ? updated : u)));
-    apiPatch('/api/users/avatar', {
-      username: currentUser.username,
+    apiPatch(`/api/users/${currentUser.username}/avatar`, {
       emoji,
       color: color || currentUser.profilePicColor,
     });
@@ -345,8 +344,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     setCurrentUser(updated);
     setUsers((prev) => prev.map((u) => (u.username === currentUser.username ? updated : u)));
-    apiPatch('/api/users/hashtags', {
-      username: currentUser.username,
+    apiPatch(`/api/users/${currentUser.username}/hashtags`, {
       hashtags: cleanTags,
     });
   };
@@ -409,7 +407,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { ...art, likedByUsernames, likesCount: likedByUsernames.length };
       })
     );
-    apiPost('/api/dartworks/like', { artworkId, username: user });
+    apiPost(`/api/dartworks/${artworkId}/like`, { artworkId, username: user });
   };
 
   const commentDArtWork = (artworkId: string, text: string) => {
@@ -426,7 +424,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         art.id === artworkId ? { ...art, comments: [...art.comments, newComment] } : art
       )
     );
-    apiPost('/api/comments', { artworkId, comment: newComment });
+    apiPost(`/api/dartworks/${artworkId}/comments`, { comment: newComment });
   };
 
   const visitDArtWork = (artworkId: string) => {
@@ -435,7 +433,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const updated = { ...currentUser, album: [...currentUser.album, artworkId] };
       setCurrentUser(updated);
       setUsers((prev) => prev.map((u) => (u.username === currentUser.username ? updated : u)));
-      apiPost('/api/dartworks/visit', { username: currentUser.username, artworkId });
+      apiPost(`/api/dartworks/${artworkId}/visit`, { artworkId });
     }
   };
 
@@ -459,7 +457,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return u;
       })
     );
-    apiPost('/api/users/follow', { myUsername: currentUser.username, targetUsername });
+    apiPost(`/api/users/${targetUsername}/follow`, { myUsername: currentUser.username });
   };
 
   const toggleFavoriteCollection = (artworkId: string) => {
@@ -475,7 +473,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = { ...currentUser, collection };
     setCurrentUser(updated);
     setUsers((prev) => prev.map((u) => (u.username === currentUser.username ? updated : u)));
-    apiPost('/api/users/collection', { username: currentUser.username, artworkId });
+    apiPost(`/api/users/${currentUser.username}/collection`, { artworkId });
   };
 
   const setCollection = (artworkIds: string[]) => {
@@ -484,7 +482,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updated = { ...currentUser, collection: limited };
     setCurrentUser(updated);
     setUsers((prev) => prev.map((u) => (u.username === currentUser.username ? updated : u)));
-    apiPost('/api/users/collection', { username: currentUser.username, collection: limited });
+    apiPost(`/api/users/${currentUser.username}/collection`, { collection: limited });
   };
 
   const reportContent = (
@@ -516,14 +514,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const dismissReports = (targetId: string) => {
     setReports((prev) => prev.filter((r) => r.targetId !== targetId));
-    apiDelete('/api/reports', { targetId });
+    apiDelete(`/api/reports/${targetId}`);
   };
 
   const removeReportedContent = (targetId: string, targetType: 'artwork' | 'comment') => {
     setReports((prev) => prev.filter((r) => r.targetId !== targetId));
     if (targetType === 'artwork') {
       setDArtWorks((prev) => prev.filter((a) => a.id !== targetId));
-      apiDelete('/api/dartworks', { artworkId: targetId });
+      apiDelete(`/api/dartworks/${targetId}`);
     } else {
       setDArtWorks((prev) =>
         prev.map((a) => ({
@@ -531,9 +529,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           comments: a.comments.filter((c) => c.id !== targetId),
         }))
       );
-      apiDelete('/api/comments', { commentId: targetId });
+      apiDelete(`/api/comments/${targetId}`);
     }
-    apiDelete('/api/reports', { targetId });
+    apiDelete(`/api/reports/${targetId}`);
   };
 
   const toggleSensitiveContent = (artworkId: string) => {

@@ -134,26 +134,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /api/dartworks/{id}:
+    get:
+      tags:
+        - D'ArtWorks & Mappa
+      summary: Recupera singolo D'ArtWork per ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          example: 66d5db90fae14b29b71a0001
+      responses:
+        '200':
+          description: Dati completi dell'opera.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DArtWork'
+        '404':
+          description: D'ArtWork non trovato.
     delete:
       tags:
         - D'ArtWorks & Mappa
-      summary: Rimuovi un D'ArtWork
+      summary: Rimuovi un D'ArtWork per ID
       description: Elimina un'opera dal sistema rimuovendo a cascata asset spaziali, commenti e segnalazioni collegate. Richiede Bearer Token.
       security:
         - BearerAuth: []
         - XAccessToken: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - artworkId
-              properties:
-                artworkId:
-                  type: string
-                  example: 66d5db90fae14b29b71a0001
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          example: 66d5db90fae14b29b71a0001
       responses:
         '200':
           description: Opera eliminata con successo.
@@ -167,38 +184,25 @@ paths:
                     example: true
         '400':
           description: ID opera non valido.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Non autorizzato.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
-  /api/dartworks/like:
+  /api/dartworks/{id}/like:
     post:
       tags:
         - D'ArtWorks & Mappa
       summary: Aggiungi o rimuovi like a un'opera
-      description: Esegue il toggle atomico del like per l'utente autenticato.
+      description: Esegue il toggle atomico del like per l'utente autenticato sull'opera indicata nel percorso.
       security:
         - BearerAuth: []
         - XAccessToken: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - artworkId
-              properties:
-                artworkId:
-                  type: string
-                  example: 66d5db90fae14b29b71a0001
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          example: 66d5db90fae14b29b71a0001
       responses:
         '200':
           description: Like aggiornato con successo.
@@ -213,29 +217,20 @@ paths:
                     type: boolean
         '401':
           description: Autenticazione richiesta.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
-  /api/dartworks/visit:
+  /api/dartworks/{id}/visit:
     post:
       tags:
         - D'ArtWorks & Mappa
       summary: Registra visualizzazione in Realtà Aumentata
-      description: Incrementa il contatore di visite all'avvicinamento entro il raggio di prossimità di 30 metri (RF3).
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - artworkId
-              properties:
-                artworkId:
-                  type: string
-                  example: 66d5db90fae14b29b71a0001
+      description: Incrementa il contatore di visite all'avvicinamento entro il raggio di 30 metri (RF3).
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          example: 66d5db90fae14b29b71a0001
       responses:
         '200':
           description: Contatore visualizzazioni aggiornato.
@@ -247,6 +242,99 @@ paths:
                   success:
                     type: boolean
                     example: true
+
+  /api/dartworks/{id}/comments:
+    get:
+      tags:
+        - Commenti & Feedback
+      summary: Leggi commenti di un'opera
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          example: 66d5db90fae14b29b71a0001
+      responses:
+        '200':
+          description: Elenco commenti dell'opera.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+    post:
+      tags:
+        - Commenti & Feedback
+      summary: Pubblica un commento su un'opera
+      security:
+        - BearerAuth: []
+        - XAccessToken: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          example: 66d5db90fae14b29b71a0001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                  example: Bellissima installazione in Piazza Duomo!
+                parentId:
+                  type: string
+                  description: ID del commento genitore in caso di risposta nidificata
+      responses:
+        '201':
+          description: Commento pubblicato con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  id:
+                    type: string
+        '401':
+          description: Autenticazione richiesta per commentare.
+
+  /api/comments/{id}:
+    delete:
+      tags:
+        - Commenti & Feedback
+      summary: Elimina un commento per ID
+      security:
+        - BearerAuth: []
+        - XAccessToken: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          example: c-101
+      responses:
+        '200':
+          description: Commento rimosso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '401':
+          description: Autenticazione richiesta.
 
   /api/users:
     get:
@@ -292,30 +380,63 @@ paths:
       responses:
         '201':
           description: Profilo utente registrato con successo.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
         '400':
           description: Username o email già registrati.
+
+  /api/users/{username}:
+    get:
+      tags:
+        - Utenti & Profili
+      summary: Recupera profilo utente per username
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            type: string
+          example: davide_db
+      responses:
+        '200':
+          description: Dati del profilo utente.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/UserProfile'
+        '404':
+          description: Utente non trovato.
+    delete:
+      tags:
+        - Utenti & Profili
+      summary: Cancellazione account utente (GDPR)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            type: string
+          example: davide_db
+      responses:
+        '200':
+          description: Account cancellato con successo.
 
-  /api/users/bio:
+  /api/users/{username}/bio:
     patch:
       tags:
         - Utenti & Profili
       summary: Aggiorna biografia utente
-      description: Modifica la bio dell'utente autenticato (massimo 350 caratteri). Richiede Bearer Token.
+      description: Modifica la bio dell'utente specificato nell'URL (massimo 350 caratteri). Richiede Bearer Token.
       security:
         - BearerAuth: []
         - XAccessToken: []
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            type: string
+          example: davide_db
       requestBody:
         required: true
         content:
@@ -332,29 +453,23 @@ paths:
       responses:
         '200':
           description: Biografia aggiornata con successo.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-        '401':
-          description: Autenticazione richiesta.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
-  /api/users/avatar:
+  /api/users/{username}/avatar:
     patch:
       tags:
         - Utenti & Profili
       summary: Modifica avatar emoji e colore
-      description: Aggiorna l'emoji e il codice colore esadecimale dell'avatar dell'utente autenticato.
+      description: Aggiorna l'emoji e il colore di sfondo dell'avatar dell'utente specificato.
       security:
         - BearerAuth: []
         - XAccessToken: []
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            type: string
+          example: davide_db
       requestBody:
         required: true
         content:
@@ -371,21 +486,8 @@ paths:
       responses:
         '200':
           description: Avatar aggiornato.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-        '401':
-          description: Autenticazione richiesta.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
-  /api/users/collection:
+  /api/users/{username}/collection:
     post:
       tags:
         - Utenti & Profili
@@ -394,6 +496,13 @@ paths:
       security:
         - BearerAuth: []
         - XAccessToken: []
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            type: string
+          example: davide_db
       requestBody:
         required: true
         content:
@@ -407,34 +516,22 @@ paths:
                   type: array
                   items:
                     type: string
-                  description: Array di ID opere (max 3 elementi)
       responses:
         '200':
           description: Collezione personale aggiornata con successo.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  collection:
-                    type: array
-                    items:
-                      type: string
-        '401':
-          description: Autenticazione richiesta.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
-  /api/users/follow:
+  /api/users/{username}/follow:
     post:
       tags:
         - Utenti & Profili
       summary: Segui / Smetti di seguire un artista
-      description: Esegue il toggle del following per l'utente verso un artista target.
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            type: string
+          example: SaraPixel
       requestBody:
         required: true
         content:
@@ -443,34 +540,29 @@ paths:
               type: object
               required:
                 - myUsername
-                - targetUsername
               properties:
                 myUsername:
                   type: string
                   example: davide_db
-                targetUsername:
-                  type: string
-                  example: SaraPixel
       responses:
         '200':
           description: Relazione following aggiornata.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
 
-  /api/users/hashtags:
+  /api/users/{username}/hashtags:
     patch:
       tags:
         - Utenti & Profili
       summary: Aggiorna hashtag seguiti
-      description: Modifica gli hashtag di interesse artistico per la personalizzazione del feed Esplora.
       security:
         - BearerAuth: []
         - XAccessToken: []
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema:
+            type: string
+          example: davide_db
       requestBody:
         required: true
         content:
@@ -488,123 +580,6 @@ paths:
       responses:
         '200':
           description: Hashtag aggiornati con successo.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-        '401':
-          description: Autenticazione richiesta.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/comments:
-    get:
-      tags:
-        - Commenti & Feedback
-      summary: Leggi commenti di un'opera
-      parameters:
-        - in: query
-          name: artworkId
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Elenco commenti dell'opera.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Comment'
-    post:
-      tags:
-        - Commenti & Feedback
-      summary: Pubblica un commento o risposta
-      description: Inserisce un commento all'opera. Se l'autore corrisponde all'artista dell'opera, il sistema assegna il badge [Artista]. Richiede Bearer Token.
-      security:
-        - BearerAuth: []
-        - XAccessToken: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - artworkId
-                - comment
-              properties:
-                artworkId:
-                  type: string
-                comment:
-                  type: object
-                  required:
-                    - text
-                  properties:
-                    text:
-                      type: string
-                      example: Bellissima installazione in Piazza Duomo!
-                    parentId:
-                      type: string
-                      description: ID del commento genitore in caso di risposta nidificata
-      responses:
-        '201':
-          description: Commento pubblicato con successo.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  id:
-                    type: string
-        '401':
-          description: Autenticazione richiesta per commentare.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    delete:
-      tags:
-        - Commenti & Feedback
-      summary: Elimina un commento
-      security:
-        - BearerAuth: []
-        - XAccessToken: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - commentId
-              properties:
-                commentId:
-                  type: string
-      responses:
-        '200':
-          description: Commento rimosso.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-        '401':
-          description: Autenticazione richiesta.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
   /api/reports:
     get:
@@ -655,62 +630,32 @@ paths:
       responses:
         '201':
           description: Segnalazione inviata al Comune di Trento.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  id:
-                    type: string
         '400':
           description: Parametri obbligatori mancanti.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Autenticazione richiesta.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reports/{targetId}:
     delete:
       tags:
         - Moderazione & Decoro Urbano
-      summary: Archivia o risolvi segnalazione
-      description: Archivia le segnalazioni relative a un determinato targetId (azione IGNORA per falso positivo). Richiede Bearer Token.
+      summary: Archivia o risolvi segnalazione per targetId
+      description: Archivia le segnalazioni relative al targetId specificato nel percorso (azione IGNORA per falso positivo). Richiede Bearer Token.
       security:
         - BearerAuth: []
         - XAccessToken: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - targetId
-              properties:
-                targetId:
-                  type: string
+      parameters:
+        - in: path
+          name: targetId
+          required: true
+          schema:
+            type: string
+          example: 66d5db90fae14b29b71a0001
       responses:
         '200':
           description: Segnalazione archiviata con successo.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
         '401':
           description: Non autorizzato.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   securitySchemes:
