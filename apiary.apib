@@ -1,21 +1,59 @@
 FORMAT: 1A
-HOST: http://localhost:8081
+HOST: https://dart-2.vercel.app
 
-# D'Art REST Web APIs
-API RESTful per la piattaforma geospaziale di Street Art Aumentata & Decoro Urbano (Comune di Trento).
-Sviluppato per il corso di Ingegneria del Software - Università degli Studi di Trento (A.A. 2025/2026).
+# D'Art API – Documentazione Ufficiale
+
+Benvenuto nella documentazione interattiva ufficiale delle **Web API RESTful di D'Art**, la piattaforma geospaziale di Street Art Aumentata & Decoro Urbano sviluppata per la città di Trento.
+
+## Server Disponibili
+- **Production Server (Vercel):** `https://dart-2.vercel.app`
+- **Development Server (Locale):** `http://localhost:8081`
+
+---
+
+## Standard di Autenticazione & Sicurezza (JWT RFC 7519)
+Le API di scrittura e moderazione richiedono autenticazione tramite **JSON Web Tokens (JWT)** firmati con algoritmo HMAC-SHA256 (`SUPER_SECRET`).
+Il client invia le proprie credenziali all'endpoint `POST /api/authentications` e riceve un Bearer Token valido per **24 ore**.
+
+Nelle richieste successive, il token può essere trasmesso tramite uno dei seguenti tre canali (in ordine di priorità):
+1. **Header HTTP Standard (Raccomandato):**
+   ```http
+   Authorization: Bearer <JWT_TOKEN>
+   ```
+2. **Header Legacy (Compatibilità EasyLib):**
+   ```http
+   x-access-token: <JWT_TOKEN>
+   ```
+3. **Query Parameter (Fallback):**
+   ```http
+   ?token=<JWT_TOKEN>
+   ```
+
+---
+
+## Convenzione Codici di Stato HTTP
+- `200 OK`: Richiesta elaborata con successo.
+- `201 Created`: Risorsa creata con successo (opera, commento, segnalazione).
+- `400 Bad Request`: Parametri mancanti, non validi o vincoli di dominio violati.
+- `401 Unauthorized`: Token mancante, scaduto o contraffatto.
+- `404 Not Found`: Risorsa non trovata nel database.
+- `500 Internal Server Error`: Errore imprevisto del server o di connessione al database.
+
+---
 
 # Group Autenticazione & Sessione
 
-## Login Utente & Rilascio JWT [/api/authentications]
+Gestione del login, verifica credenziali su MongoDB Atlas ed emissione del Token JWT.
 
-### Effettua il login [POST]
-Verifica le credenziali utente e rilascia un Bearer Token JWT firmato valido per 24 ore (RFC 7519 / HMAC-SHA256).
+## Login e Rilascio Token [/api/authentications]
+
+### Esegui il Login [POST]
+Verifica le credenziali dell'utente (username/email e password) contro la collezione `users` su MongoDB e restituisce il profilo e il token JWT firmato.
 
 + Request (application/json)
 
     + Attributes (object)
-        + username: `davide_db` (string, required) - Username o email dell'utente
+        + username: `davide_db` (string, required) - Username o indirizzo email
         + password: `password123` (string, optional) - Password dell'account
 
 + Response 200 (application/json)
@@ -23,43 +61,38 @@ Verifica le credenziali utente e rilascia un Bearer Token JWT firmato valido per
     + Attributes (object)
         + success: true (boolean)
         + message: `Enjoy your token!` (string)
-        + token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (string)
-        + user (object)
-            + username: `davide_db` (string)
-            + email: `davide@unitn.it` (string)
-            + isModerator: false (boolean)
+        + token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImRhdmlkZV9kYiIsImlhdCI6MTcyNTMyMDAwMCwiZXhwIjoxNzI1NDA2NDAwfQ.abc...` (string)
+        + user (UserProfile)
+
++ Response 400 (application/json)
+
+    + Attributes (object)
+        + success: false (boolean)
+        + error: `Username or email required` (string)
 
 + Response 401 (application/json)
 
     + Attributes (object)
         + success: false (boolean)
-        + error: `Autenticazione fallita. Credenziali errate.` (string)
+        + error: `Autenticazione fallita. Credenziali errate o utente non trovato.` (string)
 
-# Group D'ArtWorks & Mappa
 
-## Gestione Opere [/api/dartworks]
+# Group D'ArtWorks & Mappa Geospaziale
 
-### Visualizza tutte le opere [GET]
-Restituisce l'elenco completo delle opere d'arte virtuali attive con coordinate GPS e asset spaziali 3D.
+Gestione del catalogo delle opere d'arte virtuali, calcolo di prossimità per la Realtà Aumentata (RF3), like e visualizzazioni.
+
+## Collezione D'ArtWorks [/api/dartworks]
+
+### Elenco di tutte le opere attive [GET]
+Restituisce tutte le opere geolocalizzate attive sulla mappa di Trento, complete di metadati, modello 3D e commenti nidificati.
 
 + Response 200 (application/json)
 
-    + Attributes (array)
-        + (object)
-            + id: `66d5db90fae14b29b71a0001` (string)
-            + title: `Wizard Dante` (string)
-            + artist: `DArtTeam` (string)
-            + description: `Installazione 3D in realtà aumentata su Piazza Dante.` (string)
-            + locationName: `Piazza Dante, Trento` (string)
-            + latitude: 46.0718 (number)
-            + longitude: 11.1202 (number)
-            + hashtags: `3DArt`, `Dante`, `Trento` (array[string])
-            + likesCount: 42 (number)
-            + viewsCount: 120 (number)
-            + isSensitive: false (boolean)
+    + Attributes (array[DArtWork])
 
 ### Pubblica un nuovo D'ArtWork [POST]
-Crea un'opera d'arte virtuale e genera il record per il modello 3D nello spazio. Richiede Bearer Token.
+Crea un nuovo D'ArtWork e ne associa l'ancora spaziale 3D nella collezione `assets`.  
+**Richiede autenticazione**: l'identità dell'artista viene certificata direttamente dal token JWT (prevenzione *Identity Spoofing*).
 
 + Request (application/json)
 
@@ -68,23 +101,14 @@ Crea un'opera d'arte virtuale e genera il record per il modello 3D nello spazio.
             Authorization: Bearer <JWT_TOKEN>
 
     + Attributes (object)
-        + dArtWork (object, required)
-            + title: `Statua Futuristica` (string, required)
-            + description: `Scultura poligonale interattiva` (string)
-            + locationName: `Piazza Duomo` (string)
-            + latitude: 46.0674 (number)
-            + longitude: 11.1215 (number)
-            + durationHours: 48 (number)
-            + scale: 1.0 (number)
-            + rotation: 0 (number)
-            + preview: `https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe` (string)
+        + dArtWork (DArtWorkInput, required)
 
 + Response 201 (application/json)
 
     + Attributes (object)
         + success: true (boolean)
-        + insertedId: `66d5db90fae14b29b71a0001` (string)
-        + assetId: `66d5db90fae14b29b71a0002` (string)
+        + insertedId: `66d5db90fae14b29b71a0001` (string) - ID dell'opera creata
+        + assetId: `66d5db90fae14b29b71a0002` (string) - ID dell'asset 3D creato
 
 + Response 400 (application/json)
 
@@ -94,10 +118,10 @@ Crea un'opera d'arte virtuale e genera il record per il modello 3D nello spazio.
 + Response 401 (application/json)
 
     + Attributes (object)
-        + error: `Autenticazione richiesta.` (string)
+        + error: `Autenticazione richiesta. Token mancante o non valido.` (string)
 
 ### Elimina un D'ArtWork [DELETE]
-Rimuove un'opera dal database e cancella a cascata asset, commenti e segnalazioni collegate.
+Elimina definitivamente un'opera dal sistema con **cancellazione a cascata (Cascade Delete)** di modelli 3D associati, commenti e segnalazioni.
 
 + Request (application/json)
 
@@ -106,17 +130,29 @@ Rimuove un'opera dal database e cancella a cascata asset, commenti e segnalazion
             Authorization: Bearer <JWT_TOKEN>
 
     + Attributes (object)
-        + artworkId: `66d5db90fae14b29b71a0001` (string, required)
+        + artworkId: `66d5db90fae14b29b71a0001` (string, required) - ID dell'opera da eliminare
 
 + Response 200 (application/json)
 
     + Attributes (object)
         + success: true (boolean)
+        + message: `Artwork deleted successfully` (string)
 
-## Interazioni Opere [/api/dartworks/like]
++ Response 400 (application/json)
 
-### Toggle Like [POST]
-Aggiunge o rimuove il like all'opera per l'utente autenticato dal token.
+    + Attributes (object)
+        + error: `Invalid artworkId` (string)
+
++ Response 401 (application/json)
+
+    + Attributes (object)
+        + error: `Non autorizzato.` (string)
+
+
+## Interazione Like [/api/dartworks/like]
+
+### Toggle Like su un'opera [POST]
+Aggiunge o rimuove il like all'opera per l'utente autenticato in modo atomico.
 
 + Request (application/json)
 
@@ -125,18 +161,24 @@ Aggiunge o rimuove il like all'opera per l'utente autenticato dal token.
             Authorization: Bearer <JWT_TOKEN>
 
     + Attributes (object)
-        + artworkId: `66d5db90fae14b29b71a0001` (string, required)
+        + artworkId: `66d5db90fae14b29b71a0001` (string, required) - ID dell'opera
 
 + Response 200 (application/json)
 
     + Attributes (object)
         + success: true (boolean)
-        + isLiked: true (boolean)
+        + isLiked: true (boolean) - `true` se il like è stato aggiunto, `false` se rimosso
 
-## Visualizzazione AR [/api/dartworks/visit]
++ Response 401 (application/json)
 
-### Registra Visita in Realtà Aumentata [POST]
-Incrementa il contatore delle visualizzazioni all'avvicinamento entro 30m (RF3).
+    + Attributes (object)
+        + error: `Autenticazione richiesta.` (string)
+
+
+## Fruizione Realtà Aumentata [/api/dartworks/visit]
+
+### Registra visualizzazione in AR (Prossimità 30m) [POST]
+Incrementa il contatore delle visualizzazioni dell'opera quando l'utente si avvicina entro il raggio di 30 metri da coordinate GPS (RF3) e avvia la visualizzazione 3D.
 
 + Request (application/json)
 
@@ -148,27 +190,25 @@ Incrementa il contatore delle visualizzazioni all'avvicinamento entro 30m (RF3).
     + Attributes (object)
         + success: true (boolean)
 
-# Group Commenti & Feedback
 
-## Commenti D'ArtWork [/api/comments{?artworkId}]
+# Group Commenti & Community
 
-### Leggi commenti di un'opera [GET]
+Gestione dei feedback e dei commenti nidificati per le opere d'arte.
+
+## Commenti per Opera [/api/comments{?artworkId}]
+
+### Leggi i commenti di un'opera [GET]
+Restituisce tutti i commenti e le risposte collegate a una specifica opera.
 
 + Parameters
-    + artworkId: `66d5db90fae14b29b71a0001` (string, required) - ID dell'opera
+    + artworkId: `66d5db90fae14b29b71a0001` (string, required) - ID univoco dell'opera
 
 + Response 200 (application/json)
 
-    + Attributes (array)
-        + (object)
-            + id: `c-101` (string)
-            + artworkId: `66d5db90fae14b29b71a0001` (string)
-            + username: `SaraPixel` (string)
-            + text: `Installazione fantastica!` (string)
-            + createdAt: `2026-09-02` (string)
+    + Attributes (array[Comment])
 
 ### Pubblica un commento o risposta [POST /api/comments]
-Inserisce un nuovo commento. Assegna il badge [Artista] se l'utente corrisponde all'autore dell'opera.
+Inserisce un nuovo commento. Se l'utente che commenta coincide con l'autore dell'opera, il backend assegna automaticamente il badge `[Artista]`.
 
 + Request (application/json)
 
@@ -179,8 +219,8 @@ Inserisce un nuovo commento. Assegna il badge [Artista] se l'utente corrisponde 
     + Attributes (object)
         + artworkId: `66d5db90fae14b29b71a0001` (string, required)
         + comment (object, required)
-            + text: `Complimenti per l'effetto 3D!` (string, required)
-            + parentId: `c-101` (string, optional)
+            + text: `Splendida resa del modello poligonale!` (string, required)
+            + parentId: `c-101` (string, optional) - ID del commento genitore in caso di risposta nidificata
 
 + Response 201 (application/json)
 
@@ -188,12 +228,13 @@ Inserisce un nuovo commento. Assegna il badge [Artista] se l'utente corrisponde 
         + success: true (boolean)
         + id: `c-102` (string)
 
-# Group Utenti & Profili
++ Response 401 (application/json)
 
-## Collezione Personale [/api/users/collection]
+    + Attributes (object)
+        + error: `Autenticazione richiesta per commentare.` (string)
 
-### Aggiorna collezione curata (max 3 opere) [POST]
-Salva le opere preferite mostrate sul profilo, applicando il limite di massimo 3 elementi in evidenza.
+### Elimina un commento [DELETE /api/comments]
+Rimuove un commento e cancella le segnalazioni ad esso collegate.
 
 + Request (application/json)
 
@@ -202,7 +243,63 @@ Salva le opere preferite mostrate sul profilo, applicando il limite di massimo 3
             Authorization: Bearer <JWT_TOKEN>
 
     + Attributes (object)
-        + collection: `66d5db90fae14b29b71a0001`, `66d5db90fae14b29b71a0002` (array[string], required)
+        + commentId: `c-102` (string, required)
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
+
+
+# Group Utenti & Profili
+
+Gestione dei profili utente, artisti, collezione curata (max 3 opere), bio, avatar e preferenze hashtag.
+
+## Catalogo Utenti [/api/users]
+
+### Elenco profili utenti [GET]
+Restituisce i profili pubblici registrati nel sistema.
+
++ Response 200 (application/json)
+
+    + Attributes (array[UserProfile])
+
+### Registrazione nuovo account [POST]
+Crea un nuovo profilo utente con preferenze predefinite.
+
++ Request (application/json)
+
+    + Attributes (object)
+        + username: `nuovo_artista` (string, required)
+        + email: `artista@unitn.it` (string, required)
+        + password: `password123` (string, optional)
+        + newUser (UserProfile, optional)
+
++ Response 201 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
+
++ Response 400 (application/json)
+
+    + Attributes (object)
+        + error: `User already exists` (string)
+
+
+## Collezione Curata Personale [/api/users/collection]
+
+### Aggiorna la collezione in evidenza (max 3 opere) [POST]
+Aggiorna le opere preferite mostrate sul profilo dell'artista, applicando rigorosamente il vincolo di capienza massima a 3 elementi (RF10).
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Bearer <JWT_TOKEN>
+
+    + Attributes (object)
+        + artworkId: `66d5db90fae14b29b71a0001` (string, optional) - ID singola opera da aggiungere/rimuovere
+        + collection: `66d5db90fae14b29b71a0001`, `66d5db90fae14b29b71a0002` (array[string], optional) - Nuovo array completo (max 3)
 
 + Response 200 (application/json)
 
@@ -210,26 +307,11 @@ Salva le opere preferite mostrate sul profilo, applicando il limite di massimo 3
         + success: true (boolean)
         + collection: `66d5db90fae14b29b71a0001`, `66d5db90fae14b29b71a0002` (array[string])
 
-# Group Moderazione & Decoro Urbano
 
-## Gestione Segnalazioni [/api/reports]
+## Gestione Biografia [/api/users/bio]
 
-### Recupera segnalazioni attive [GET]
-Restituisce la lista di segnalazioni per la dashboard dei moderatori del Comune di Trento.
-
-+ Response 200 (application/json)
-
-    + Attributes (array)
-        + (object)
-            + id: `rep-01` (string)
-            + targetId: `66d5db90fae14b29b71a0001` (string)
-            + targetType: `artwork` (string)
-            + reporterUsername: `cittadino_trento` (string)
-            + category: `offensive` (string)
-            + reason: `Linguaggio non consono al luogo storico.` (string)
-            + createdAt: `2026-09-02T10:00:00.000Z` (string)
-
-### Invia segnalazione di decoro urbano [POST]
+### Modifica biografia utente [PATCH]
+Aggiorna la descrizione del profilo (massimo 350 caratteri).
 
 + Request (application/json)
 
@@ -238,18 +320,127 @@ Restituisce la lista di segnalazioni per la dashboard dei moderatori del Comune 
             Authorization: Bearer <JWT_TOKEN>
 
     + Attributes (object)
-        + targetId: `66d5db90fae14b29b71a0001` (string, required)
-        + targetType: `artwork` (string, optional)
-        + category: `offensive` (string, required)
-        + reason: `Contenuto non appropriato` (string, optional)
+        + bio: `Artista digitale e modellatore 3D specializzato in monumenti aumentati a Trento.` (string, required)
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
+
+
+## Personalizzazione Avatar [/api/users/avatar]
+
+### Modifica emoji e colore avatar [PATCH]
+Aggiorna l'icona emoji e il colore esadecimale di sfondo dell'avatar dell'utente.
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Bearer <JWT_TOKEN>
+
+    + Attributes (object)
+        + emoji: `🦊` (string, optional)
+        + color: `#6366F1` (string, optional)
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
+
+
+## Follow Artisti [/api/users/follow]
+
+### Segui o smetti di seguire un artista [POST]
+Esegue il toggle della relazione following/followers tra utenti.
+
++ Request (application/json)
+
+    + Attributes (object)
+        + myUsername: `davide_db` (string, required)
+        + targetUsername: `SaraPixel` (string, required)
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
+
+
+## Hashtag di Interesse [/api/users/hashtags]
+
+### Aggiorna hashtag preferiti [PATCH]
+Aggiorna i tag tematici seguiti dall'utente per personalizzare il feed di scoperta.
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Bearer <JWT_TOKEN>
+
+    + Attributes (object)
+        + hashtags: `3DArt`, `Trento`, `Sculpture` (array[string], required)
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
+
+
+# Group Moderazione & Decoro Urbano
+
+Strumenti riservati ai moderatori del Comune di Trento per il controllo delle segnalazioni cittadine e la tutela del decoro urbano.
+
+## Coda Segnalazioni [/api/reports]
+
+### Visualizza segnalazioni attive [GET]
+Restituisce l'elenco delle segnalazioni inviate dagli utenti, ordinate dalla più recente.
+
++ Response 200 (application/json)
+
+    + Attributes (array[ContentReport])
+
+### Invia una segnalazione di decoro urbano [POST]
+Invia una segnalazione motivata relativa a un'opera o a un commento (categorie: `offensive`, `copyright`, `spam`, `danger`).
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Bearer <JWT_TOKEN>
+
+    + Attributes (object)
+        + targetId: `66d5db90fae14b29b71a0001` (string, required) - ID opera o commento
+        + targetType: `artwork` (enum[string], optional) - Tipologia di contenuto
+            + Members
+                + `artwork`
+                + `comment`
+            + Default: `artwork`
+        + category: `offensive` (enum[string], required) - Categoria di violazione
+            + Members
+                + `offensive`
+                + `copyright`
+                + `spam`
+                + `danger`
+        + reason: `Linguaggio non consono al luogo storico di Piazza Duomo.` (string, optional)
 
 + Response 201 (application/json)
 
     + Attributes (object)
         + success: true (boolean)
-        + id: `rep-02` (string)
+        + id: `rep-1725320000000` (string)
 
-### Archivia o risolvi segnalazione [DELETE]
++ Response 400 (application/json)
+
+    + Attributes (object)
+        + error: `Target ID and category are required` (string)
+
++ Response 401 (application/json)
+
+    + Attributes (object)
+        + error: `Autenticazione richiesta per inviare segnalazioni.` (string)
+
+### Archivia o risolvi una segnalazione [DELETE]
+Rimuove la segnalazione dalla coda dei moderatori (azione *"IGNORA"* in caso di falso positivo). L'opera associata rimane online e visibile.
 
 + Request (application/json)
 
@@ -258,9 +449,86 @@ Restituisce la lista di segnalazioni per la dashboard dei moderatori del Comune 
             Authorization: Bearer <JWT_TOKEN>
 
     + Attributes (object)
-        + targetId: `66d5db90fae14b29b71a0001` (string, required)
+        + targetId: `66d5db90fae14b29b71a0001` (string, required) - ID del target le cui segnalazioni vanno archiviate
 
 + Response 200 (application/json)
 
     + Attributes (object)
         + success: true (boolean)
+        + message: `Reports dismissed successfully` (string)
+
++ Response 401 (application/json)
+
+    + Attributes (object)
+        + error: `Non autorizzato.` (string)
+
+
+# Data Structures
+
+## UserProfile (object)
++ username: `davide_db` (string, required) - Username univoco dell'utente
++ email: `davide@unitn.it` (string, required) - Indirizzo email
++ bio: `Software engineer & digital artist in Trento.` (string) - Breve descrizione
++ profilePicColor: `#6366F1` (string) - Colore esadecimale di sfondo avatar
++ profilePicEmoji: `🦊` (string) - Emoji dell'avatar
++ album: `66d5db90fae14b29b71a0001` (array[string]) - ID delle opere visitate in AR
++ collection: `66d5db90fae14b29b71a0001`, `66d5db90fae14b29b71a0002` (array[string]) - Collezione curata (massimo 3 opere)
++ exposition: `66d5db90fae14b29b71a0001` (array[string]) - ID delle opere create e pubblicate
++ following: `SaraPixel`, `CyberMart` (array[string]) - Artisti seguiti
++ followers: `MarcoArt` (array[string]) - Utenti che seguono il profilo
++ badges: `Pioniere Digitale`, `Top Artist` (array[string]) - Riconoscimenti conseguiti
++ hashtags: `3DArt`, `Trento`, `Sculpture` (array[string]) - Tag artistici seguiti
++ isModerator: false (boolean) - Flag di moderatore del Comune di Trento
+
+## DArtWork (object)
++ id: `66d5db90fae14b29b71a0001` (string, required) - ID univoco dell'opera
++ title: `Wizard Dante` (string, required) - Titolo dell'opera
++ artist: `DArtTeam` (string, required) - Username dell'artista creatore
++ description: `Installazione 3D in realtà aumentata su Piazza Dante.` (string) - Descrizione dell'opera
++ locationName: `Piazza Dante, Trento` (string) - Denominazione del luogo
++ latitude: 46.0718 (number, required) - Coordinata geografica latitudine
++ longitude: 11.1202 (number, required) - Coordinata geografica longitudine
++ hashtags: `3DArt`, `Dante`, `Trento` (array[string]) - Tag associati
++ likesCount: 42 (number) - Conteggio dei like ricevuti
++ viewsCount: 120 (number) - Conteggio visualizzazioni AR
++ isSensitive: false (boolean) - Flag di contenuto sensibile
++ creationDate: `2026-09-01T10:00:00.000Z` (string) - Data ISO di pubblicazione
++ expirationDate: `2026-09-22T23:59:59.000Z` (string) - Data ISO di fine esposizione a tempo
++ asset (Asset) - Modello 3D e parametri spaziali associati
++ comments (array[Comment]) - Commenti degli utenti
+
+## DArtWorkInput (object)
++ title: `Statua Futuristica` (string, required) - Titolo dell'opera
++ description: `Scultura poligonale interattiva ancorata in Piazza Duomo.` (string) - Descrizione
++ locationName: `Piazza Duomo` (string) - Denominazione posizione
++ latitude: 46.0674 (number, required) - Latitudine GPS
++ longitude: 11.1215 (number, required) - Longitudine GPS
++ durationHours: 48 (number) - Durata esposizione in ore (default: 48)
++ scale: 1.0 (number) - Fattore di scala del modello 3D
++ rotation: 0 (number) - Angolo di rotazione iniziale
++ preview: `https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe` (string) - URL anteprima
+
+## Asset (object)
++ id: `66d5db90fae14b29b71a0002` (string) - ID univoco dell'asset
++ name: `Wizard Dante 3D Model` (string) - Nome descrittivo
++ url: `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF/Duck.gltf` (string) - URL del modello digitale
++ scale: 1.0 (number) - Scala di rendering
++ rotation: 0 (number) - Rotazione di rendering
+
+## Comment (object)
++ id: `c-101` (string, required) - ID univoco del commento
++ artworkId: `66d5db90fae14b29b71a0001` (string) - ID opera collegata
++ username: `SaraPixel` (string, required) - Autore del commento
++ text: `Splendida resa del modello poligonale!` (string, required) - Testo del commento
++ createdAt: `2026-09-02T14:30:00.000Z` (string) - Data ISO di pubblicazione
++ parentId: `c-100` (string) - ID commento genitore in caso di risposta
++ replies: (array[Comment]) - Risposte nidificate
+
+## ContentReport (object)
++ id: `rep-1725320000000` (string, required) - ID univoco della segnalazione
++ targetId: `66d5db90fae14b29b71a0001` (string, required) - ID dell'opera o commento segnalato
++ targetType: `artwork` (string) - Tipologia (`artwork` o `comment`)
++ reporterUsername: `cittadino_trento` (string) - Utente che ha inviato la segnalazione
++ category: `offensive` (string, required) - Categoria (`offensive`, `copyright`, `spam`, `danger`)
++ reason: `Linguaggio non consono al luogo storico.` (string) - Motivazione
++ createdAt: `2026-09-02T10:00:00.000Z` (string) - Data ISO della segnalazione
