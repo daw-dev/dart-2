@@ -1,0 +1,266 @@
+FORMAT: 1A
+HOST: http://localhost:8081
+
+# D'Art REST Web APIs
+API RESTful per la piattaforma geospaziale di Street Art Aumentata & Decoro Urbano (Comune di Trento).
+Sviluppato per il corso di Ingegneria del Software - Università degli Studi di Trento (A.A. 2025/2026).
+
+# Group Autenticazione & Sessione
+
+## Login Utente & Rilascio JWT [/api/authentications]
+
+### Effettua il login [POST]
+Verifica le credenziali utente e rilascia un Bearer Token JWT firmato valido per 24 ore (RFC 7519 / HMAC-SHA256).
+
++ Request (application/json)
+
+    + Attributes (object)
+        + username: `davide_db` (string, required) - Username o email dell'utente
+        + password: `password123` (string, optional) - Password dell'account
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
+        + message: `Enjoy your token!` (string)
+        + token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (string)
+        + user (object)
+            + username: `davide_db` (string)
+            + email: `davide@unitn.it` (string)
+            + isModerator: false (boolean)
+
++ Response 401 (application/json)
+
+    + Attributes (object)
+        + success: false (boolean)
+        + error: `Autenticazione fallita. Credenziali errate.` (string)
+
+# Group D'ArtWorks & Mappa
+
+## Gestione Opere [/api/dartworks]
+
+### Visualizza tutte le opere [GET]
+Restituisce l'elenco completo delle opere d'arte virtuali attive con coordinate GPS e asset spaziali 3D.
+
++ Response 200 (application/json)
+
+    + Attributes (array)
+        + (object)
+            + id: `66d5db90fae14b29b71a0001` (string)
+            + title: `Wizard Dante` (string)
+            + artist: `DArtTeam` (string)
+            + description: `Installazione 3D in realtà aumentata su Piazza Dante.` (string)
+            + locationName: `Piazza Dante, Trento` (string)
+            + latitude: 46.0718 (number)
+            + longitude: 11.1202 (number)
+            + hashtags: `3DArt`, `Dante`, `Trento` (array[string])
+            + likesCount: 42 (number)
+            + viewsCount: 120 (number)
+            + isSensitive: false (boolean)
+
+### Pubblica un nuovo D'ArtWork [POST]
+Crea un'opera d'arte virtuale e genera il record per il modello 3D nello spazio. Richiede Bearer Token.
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Bearer <JWT_TOKEN>
+
+    + Attributes (object)
+        + dArtWork (object, required)
+            + title: `Statua Futuristica` (string, required)
+            + description: `Scultura poligonale interattiva` (string)
+            + locationName: `Piazza Duomo` (string)
+            + latitude: 46.0674 (number)
+            + longitude: 11.1215 (number)
+            + durationHours: 48 (number)
+            + scale: 1.0 (number)
+            + rotation: 0 (number)
+            + preview: `https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe` (string)
+
++ Response 201 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
+        + insertedId: `66d5db90fae14b29b71a0001` (string)
+        + assetId: `66d5db90fae14b29b71a0002` (string)
+
++ Response 400 (application/json)
+
+    + Attributes (object)
+        + error: `Title and artist are required` (string)
+
++ Response 401 (application/json)
+
+    + Attributes (object)
+        + error: `Autenticazione richiesta.` (string)
+
+### Elimina un D'ArtWork [DELETE]
+Rimuove un'opera dal database e cancella a cascata asset, commenti e segnalazioni collegate.
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Bearer <JWT_TOKEN>
+
+    + Attributes (object)
+        + artworkId: `66d5db90fae14b29b71a0001` (string, required)
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
+
+## Interazioni Opere [/api/dartworks/like]
+
+### Toggle Like [POST]
+Aggiunge o rimuove il like all'opera per l'utente autenticato dal token.
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Bearer <JWT_TOKEN>
+
+    + Attributes (object)
+        + artworkId: `66d5db90fae14b29b71a0001` (string, required)
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
+        + isLiked: true (boolean)
+
+## Visualizzazione AR [/api/dartworks/visit]
+
+### Registra Visita in Realtà Aumentata [POST]
+Incrementa il contatore delle visualizzazioni all'avvicinamento entro 30m (RF3).
+
++ Request (application/json)
+
+    + Attributes (object)
+        + artworkId: `66d5db90fae14b29b71a0001` (string, required)
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
+
+# Group Commenti & Feedback
+
+## Commenti D'ArtWork [/api/comments{?artworkId}]
+
+### Leggi commenti di un'opera [GET]
+
++ Parameters
+    + artworkId: `66d5db90fae14b29b71a0001` (string, required) - ID dell'opera
+
++ Response 200 (application/json)
+
+    + Attributes (array)
+        + (object)
+            + id: `c-101` (string)
+            + artworkId: `66d5db90fae14b29b71a0001` (string)
+            + username: `SaraPixel` (string)
+            + text: `Installazione fantastica!` (string)
+            + createdAt: `2026-09-02` (string)
+
+### Pubblica un commento o risposta [POST /api/comments]
+Inserisce un nuovo commento. Assegna il badge [Artista] se l'utente corrisponde all'autore dell'opera.
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Bearer <JWT_TOKEN>
+
+    + Attributes (object)
+        + artworkId: `66d5db90fae14b29b71a0001` (string, required)
+        + comment (object, required)
+            + text: `Complimenti per l'effetto 3D!` (string, required)
+            + parentId: `c-101` (string, optional)
+
++ Response 201 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
+        + id: `c-102` (string)
+
+# Group Utenti & Profili
+
+## Collezione Personale [/api/users/collection]
+
+### Aggiorna collezione curata (max 3 opere) [POST]
+Salva le opere preferite mostrate sul profilo, applicando il limite di massimo 3 elementi in evidenza.
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Bearer <JWT_TOKEN>
+
+    + Attributes (object)
+        + collection: `66d5db90fae14b29b71a0001`, `66d5db90fae14b29b71a0002` (array[string], required)
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
+        + collection: `66d5db90fae14b29b71a0001`, `66d5db90fae14b29b71a0002` (array[string])
+
+# Group Moderazione & Decoro Urbano
+
+## Gestione Segnalazioni [/api/reports]
+
+### Recupera segnalazioni attive [GET]
+Restituisce la lista di segnalazioni per la dashboard dei moderatori del Comune di Trento.
+
++ Response 200 (application/json)
+
+    + Attributes (array)
+        + (object)
+            + id: `rep-01` (string)
+            + targetId: `66d5db90fae14b29b71a0001` (string)
+            + targetType: `artwork` (string)
+            + reporterUsername: `cittadino_trento` (string)
+            + category: `offensive` (string)
+            + reason: `Linguaggio non consono al luogo storico.` (string)
+            + createdAt: `2026-09-02T10:00:00.000Z` (string)
+
+### Invia segnalazione di decoro urbano [POST]
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Bearer <JWT_TOKEN>
+
+    + Attributes (object)
+        + targetId: `66d5db90fae14b29b71a0001` (string, required)
+        + targetType: `artwork` (string, optional)
+        + category: `offensive` (string, required)
+        + reason: `Contenuto non appropriato` (string, optional)
+
++ Response 201 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
+        + id: `rep-02` (string)
+
+### Archivia o risolvi segnalazione [DELETE]
+
++ Request (application/json)
+
+    + Headers
+
+            Authorization: Bearer <JWT_TOKEN>
+
+    + Attributes (object)
+        + targetId: `66d5db90fae14b29b71a0001` (string, required)
+
++ Response 200 (application/json)
+
+    + Attributes (object)
+        + success: true (boolean)
